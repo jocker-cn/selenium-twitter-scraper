@@ -123,7 +123,11 @@ def main():
         USER_MAIL = args.mail
         USER_UNAME = args.user
         USER_PASSWORD = args.password
-        FILE_PATH = args.filePath
+        FILE_PATH = args.filePath or os.getenv("FILE_PATH")
+
+        if not FILE_PATH:
+            print(json.dumps(Result.fail_with_msg("File path must be a valid string. Please check your .env file.").to_dict()))
+            sys.exit(1)
 
         if USER_UNAME is None:
             USER_UNAME = input("Twitter Username: ")
@@ -157,7 +161,8 @@ def main():
                 password=USER_PASSWORD,
                 file_path=FILE_PATH,
             )
-            # scraper.login()
+            if not scraper.load_cookies():
+                scraper.login()
             scraper.scrape_tweets(
                 max_tweets=args.tweets,
                 no_tweets_limit=args.no_tweets_limit if args.no_tweets_limit is not None else True,
