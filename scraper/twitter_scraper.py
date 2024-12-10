@@ -84,6 +84,7 @@ class Twitter_Scraper:
             scrape_top,
             scrape_poster_details,
         )
+        self.cookie_file = "cookies.json"
 
     def _config_scraper(
             self,
@@ -214,10 +215,10 @@ class Twitter_Scraper:
             self._input_password()
 
             cookies = self.driver.get_cookies()
-            # with open("D:\\firefoxTest\\cookies.pkl", 'w') as filehandler:
-            #     json.dump(cookies, filehandler)
+            with open(self.cookie_file, 'wb') as filehandler:
+                pickle.dump(cookies, filehandler)
+
             auth_token = None
-            pickle.dump(cookies, open("D:\\firefoxTest\\cookies.pkl", 'wb'))
             for cookie in cookies:
                 if cookie["name"] == "auth_token":
                     auth_token = cookie["value"]
@@ -406,12 +407,10 @@ It may be due to the following:
             scrape_poster_details,
         )
 
+        if not self.load_cookies():
+            self.login()
+
         self.driver.get("https://twitter.com/home")
-        cookies = pickle.load(open("D:\\firefoxTest\\cookies.pkl", 'rb'))
-        for cookie in cookies:
-            if 'sameSite' in cookie:
-                del cookie['sameSite']
-            self.driver.add_cookie(cookie)
 
         if router is None:
             router = self.router
@@ -553,6 +552,21 @@ It may be due to the following:
 
     def save_to_json(self):
         print("Saving Tweets to JSON...")
+
+        # 检查 file_path 是否有效
+        if not self.file_path:
+            raise ValueError("File path must be a valid string.")
+
+        # 展开用户目录并指定文件名
+        directory = os.path.expanduser(self.file_path)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            print(f"Created directory: {directory}")
+
+        # 指定文件名
+        file_name = "tweets.json"
+        file_path = os.path.join(directory, file_name)
+
         tweets_data = []
         for tweet in self.data:
             tweet_info = {
@@ -579,10 +593,12 @@ It may be due to the following:
                 tweet_info["Followers"] = tweet[17]
 
             tweets_data.append(tweet_info)
-        with open(self.file_path, 'w', encoding='utf-8') as json_file:
+
+        with open(file_path, 'w', encoding='utf-8') as json_file:
             json.dump(tweets_data, json_file, ensure_ascii=False, indent=4)
-        print("JSON Saved: {}".format(self.file_path))
-        print(json.dumps(Result.ok("".format(self.file_path)).to_dict()))
+
+        print("JSON Saved: {}".format(file_path))
+        print(json.dumps(Result.ok(file_path).to_dict()))
 
     def save_to_json_limit(self, batch_size):
         print("Saving Tweets to JSON...")
@@ -675,3 +691,25 @@ It may be due to the following:
 
     def get_tweets(self):
         return self.data
+
+    def save_cookies(self):
+        cookies = self.driver.get_cookies()
+        with open(self.cookie_file, 'w') as file:
+            json.dump(cookies, file)
+
+    def load_cookies(self):
+        try:
+            # 确保浏览器导航到 Twitter 的主页
+            self.driver.get("https://twitter.com")
+            sleep(3)  # 等待页面加载
+
+            with open(self.cookie_file, 'rb') as filehandler:
+                cookies = pickle.load(filehandler)
+                for cookie in cookies:
+                    self.driver.add_cookie(cookie)
+            return True
+        except FileNotFoundError:
+            return False
+        except Exception as e:
+            print(f"Error loading cookies: {e}")
+            return False
