@@ -149,7 +149,7 @@ class Twitter_Scraper:
         if proxy is not None:
             browser_option.add_argument("--proxy-server=%s" % proxy)
         # For Hiding Browser
-        browser_option.add_argument("--headless")
+        #browser_option.add_argument("--headless")
 
         try:
             # print("Initializing ChromeDriver...")
@@ -200,7 +200,7 @@ class Twitter_Scraper:
             WebDriverWait(self.driver, 15).until(
                 lambda driver: driver.execute_script("return document.readyState") == "complete"
             )
-            sleep(1)
+            sleep(3)
             self._input_username()
             self._input_unusual_activity()
             self._input_password()
