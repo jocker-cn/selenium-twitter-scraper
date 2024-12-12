@@ -2,7 +2,7 @@ import json
 import os
 import sys
 import argparse
-import getpass
+
 
 from scraper.result import Result
 from scraper.twitter_scraper import Twitter_Scraper
@@ -15,10 +15,10 @@ try:
     print("Loaded .env file\n")
 except Exception as e:
     print(f"Error loading .env file: {e}")
-    sys.exit(1)
 
 
 def main():
+    global scraper
     try:
         parser = argparse.ArgumentParser(
             add_help=True,
@@ -49,10 +49,23 @@ def main():
             )
 
             parser.add_argument(
+                "--cookiesPath",
+                type=str,
+                default=None,
+                help="Your Save File Path.",
+            )
+            parser.add_argument(
                 "--password",
                 type=str,
                 default=os.getenv("TWITTER_PASSWORD"),
                 help="Your Twitter password.",
+            )
+
+            parser.add_argument(
+                "--login",
+                action='store_true',
+                default=False,
+                help="Your Save File Path.",
             )
         except Exception as e:
             print(f"Error retrieving environment variables: {e}")
@@ -122,18 +135,21 @@ def main():
 
         USER_MAIL = args.mail
         USER_UNAME = args.user
+        COOKIES_PATH = args.cookiesPath
         USER_PASSWORD = args.password
         FILE_PATH = args.filePath or os.getenv("FILE_PATH")
-
-        if not FILE_PATH:
+        LOGINT = args.login
+        if not FILE_PATH and not LOGINT:
             print(json.dumps(Result.fail_with_msg("File path must be a valid string. Please check your .env file.").to_dict()))
             sys.exit(1)
 
-        if USER_UNAME is None:
-            USER_UNAME = input("Twitter Username: ")
-
-        if USER_PASSWORD is None:
-            USER_PASSWORD = getpass.getpass("Enter Password: ")
+        # if USER_UNAME is None:
+        #     print(json.dumps(Result.fail_with_msg("Twitter Username is None").to_dict()))
+        #     sys.exit(1)
+        #
+        # if USER_PASSWORD is None:
+        #     print(json.dumps(Result.fail_with_msg("Twitter Password is None").to_dict()))
+        #     sys.exit(1)
 
         tweet_type_args = []
 
@@ -143,26 +159,33 @@ def main():
             tweet_type_args.append(args.hashtag)
         if args.query is not None:
             tweet_type_args.append(args.query)
+        if args.login is not None and args.login:
+            tweet_type_args.append(args.login)
 
         additional_data: list = args.add.split(",")
 
         if len(tweet_type_args) > 1:
-            print(json.dumps(Result.fail_with_msg("Please specify only one of --username, --hashtag, or --query.").to_dict()))
+            print(json.dumps(
+                Result.fail_with_msg("Please specify only one of --username, --hashtag, or --query.").to_dict()))
             sys.exit(1)
 
         if args.latest and args.top:
             print(json.dumps(Result.fail_with_msg("Please specify either --latest or --top. Not both.").to_dict()))
             sys.exit(1)
 
-        if USER_UNAME is not None and USER_PASSWORD is not None:
-            scraper = Twitter_Scraper(
-                mail=USER_MAIL,
-                username=USER_UNAME,
-                password=USER_PASSWORD,
-                file_path=FILE_PATH,
-            )
-            if not scraper.load_cookies():
-                scraper.login()
+        scraper = Twitter_Scraper(
+            mail=USER_MAIL,
+            username=USER_UNAME,
+            password=USER_PASSWORD,
+            file_path=os.path.normpath(FILE_PATH) if FILE_PATH is not None else '',
+            cookies_path=os.path.normpath(COOKIES_PATH) if FILE_PATH is not None else None,
+        )
+
+        if USER_UNAME is not None and USER_PASSWORD is not None and LOGINT:
+            scraper.login()
+            if scraper.driver:
+                scraper.driver.quit()
+        else:
             scraper.scrape_tweets(
                 max_tweets=args.tweets,
                 no_tweets_limit=args.no_tweets_limit if args.no_tweets_limit is not None else True,
@@ -174,18 +197,19 @@ def main():
                 scrape_poster_details="pd" in additional_data,
             )
             scraper.save_to_json()
-            if not scraper.interrupted:
-                scraper.driver.close()
-        else:
-            print(json.dumps(Result.fail_with_msg("Missing Twitter username or password environment variables. Please check your .env file.").to_dict()))
-            sys.exit(1)
+            if scraper.driver:
+                scraper.driver.quit()
     except KeyboardInterrupt:
         print(json.dumps(Result.fail_with_msg("Script Interrupted by user. Exiting...").to_dict()))
+        if scraper and scraper.driver:
+            scraper.driver.close()
         sys.exit(1)
     except Exception as e:
         print(json.dumps(Result.fail_with_msg(f"Error: {e}").to_dict()))
+        if scraper and scraper.driver:
+            scraper.driver.close()
         sys.exit(1)
-    sys.exit(1)
+    sys.exit(0)
 
 
 if __name__ == "__main__":

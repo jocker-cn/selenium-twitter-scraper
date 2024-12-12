@@ -43,6 +43,7 @@ class Twitter_Scraper:
             username,
             password,
             file_path,
+            cookies_path,
             max_tweets=50,
             scrape_username=None,
             scrape_hashtag=None,
@@ -57,6 +58,7 @@ class Twitter_Scraper:
         self.username = username
         self.password = password
         self.file_path = file_path
+        self.cookie_file = cookies_path if cookies_path is not None else "cookies.json"
         self.interrupted = False
         self.tweet_ids = set()
         self.data = []
@@ -84,7 +86,6 @@ class Twitter_Scraper:
             scrape_top,
             scrape_poster_details,
         )
-        self.cookie_file = "cookies.json"
 
     def _config_scraper(
             self,
@@ -134,17 +135,6 @@ class Twitter_Scraper:
     ):
         print("Setup WebDriver...")
         header = Headers().generate()["User-Agent"]
-        # profile = FirefoxProfile("D:\\firefoxTest")
-        # profile.set_preference("browser.cache.disk.enable", True)
-        # profile.set_preference("browser.cache.memory.enable", True)
-        # profile.set_preference("browser.cache.offline.enable", True)
-        # profile.set_preference("network.cookie.lifetimePolicy", 0)  # 使 Cookie 正常过期
-        # profile.set_preference("network.cookie.keepSessionCookies", True)
-        # profile.set_preference("privacy.clearOnShutdown.cookies", False)
-        # profile.set_preference("privacy.clearOnShutdown.cache", False)
-        # profile.set_preference("privacy.clearOnShutdown.offlineApps", False)
-        # profile.set_preference("privacy.clearOnShutdown.sessions", False)
-        # profile.set_preference("privacy.clearOnShutdown.siteSettings", False)
 
         # browser_option = ChromeOptions()
         browser_option = FirefoxOptions()
@@ -158,9 +148,8 @@ class Twitter_Scraper:
         browser_option.add_argument("--user-agent={}".format(header))
         if proxy is not None:
             browser_option.add_argument("--proxy-server=%s" % proxy)
-        # browser_option.profile = profile
         # For Hiding Browser
-        # browser_option.add_argument("--headless")
+        browser_option.add_argument("--headless")
 
         try:
             # print("Initializing ChromeDriver...")
@@ -208,8 +197,10 @@ class Twitter_Scraper:
         try:
             self.driver.maximize_window()
             self.driver.get(TWITTER_LOGIN_URL)
-            sleep(3)
-
+            WebDriverWait(self.driver, 15).until(
+                lambda driver: driver.execute_script("return document.readyState") == "complete"
+            )
+            sleep(1)
             self._input_username()
             self._input_unusual_activity()
             self._input_password()
@@ -233,12 +224,12 @@ class Twitter_Scraper:
 - Password is incorrect
 """
                 )
-
-            print("Login Successful")
+            print(json.dumps(Result.ok("Login Successful").to_dict()))
         except Exception as e:
             print(json.dumps(Result.fail_with_msg(f"Login Failed: {e}").to_dict()))
+            if self.driver:
+                self.driver.quit()
             sys.exit(1)
-
         pass
 
     def _input_username(self):
@@ -249,7 +240,6 @@ class Twitter_Scraper:
                 username = self.driver.find_element(
                     "xpath", "//input[@autocomplete='username']"
                 )
-
                 username.send_keys(self.username)
                 username.send_keys(Keys.RETURN)
                 sleep(3)
@@ -280,6 +270,7 @@ It may be due to the following:
                 unusual_activity = self.driver.find_element(
                     "xpath", "//input[@data-testid='ocfEnterTextTextInput']"
                 )
+                sleep(0.5)
                 unusual_activity.send_keys(self.username)
                 unusual_activity.send_keys(Keys.RETURN)
                 sleep(3)
@@ -297,6 +288,7 @@ It may be due to the following:
                 password = self.driver.find_element(
                     "xpath", "//input[@autocomplete='current-password']"
                 )
+                sleep(0.5)
                 password.send_keys(self.password)
                 password.send_keys(Keys.RETURN)
                 sleep(3)
@@ -407,11 +399,13 @@ It may be due to the following:
             scrape_poster_details,
         )
 
+        self.driver.get("https://twitter.com/home")
+        WebDriverWait(self.driver, 10).until(
+            lambda driver: driver.execute_script("return document.readyState") == "complete"
+        )
         if not self.load_cookies():
             self.login()
-
         self.driver.get("https://twitter.com/home")
-
         if router is None:
             router = self.router
 
@@ -502,7 +496,6 @@ It may be due to the following:
                     break
 
                 if added_tweets == 0:
-                    # Check if there is a button "Retry" and click on it with a regular basis until a certain amount of tries
                     try:
                         while retry_cnt < 15:
                             retry_button = self.driver.find_element(
@@ -512,7 +505,6 @@ It may be due to the following:
                             retry_button.click()
                             retry_cnt += 1
                             sleep(2)
-                    # There is no Retry button so the counter is reseted
                     except NoSuchElementException:
                         retry_cnt = 0
                         self.progress.print_progress(len(self.data), False, 0, no_tweets_limit)
@@ -557,16 +549,7 @@ It may be due to the following:
         if not self.file_path:
             raise ValueError("File path must be a valid string.")
 
-        # 展开用户目录并指定文件名
-        directory = os.path.expanduser(self.file_path)
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-            print(f"Created directory: {directory}")
-
-        # 指定文件名
-        file_name = "tweets.json"
-        file_path = os.path.join(directory, file_name)
-
+        file_path = os.path.expanduser(self.file_path)
         tweets_data = []
         for tweet in self.data:
             tweet_info = {
@@ -699,10 +682,6 @@ It may be due to the following:
 
     def load_cookies(self):
         try:
-            # 确保浏览器导航到 Twitter 的主页
-            self.driver.get("https://twitter.com")
-            sleep(3)  # 等待页面加载
-
             with open(self.cookie_file, 'rb') as filehandler:
                 cookies = pickle.load(filehandler)
                 for cookie in cookies:
