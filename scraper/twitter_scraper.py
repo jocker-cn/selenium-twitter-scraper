@@ -2,8 +2,11 @@ import json
 import os
 import pickle
 import sys
+
 import pandas as pd
-from selenium.webdriver import FirefoxProfile
+from numpy.f2py.auxfuncs import throw_error
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 
 from scraper.progress import Progress
 from scraper.result import Result
@@ -30,10 +33,9 @@ from selenium.webdriver.firefox.service import Service as FirefoxService
 
 from selenium.webdriver.support.ui import WebDriverWait
 
-from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
 
-TWITTER_LOGIN_URL = "https://twitter.com/i/flow/login"
+TWITTER_LOGIN_URL = "https://x.com/i/flow/login"
 
 
 class Twitter_Scraper:
@@ -192,19 +194,38 @@ class Twitter_Scraper:
                 sys.exit(1)
         pass
 
+    def skip_login(self):
+        max_retries = 3  # 设置最大重试次数
+        retries = 0
+
+        while retries < max_retries:
+            self.driver.get(TWITTER_LOGIN_URL)
+            sleep(2)  # 等待页面加载
+            WebDriverWait(self.driver, 15).until(
+                lambda driver: driver.execute_script("return document.readyState") == "complete"
+            )
+            current_url = self.driver.current_url
+            if current_url == TWITTER_LOGIN_URL:
+                print("Successfully landed on the login page.")
+                break  # 如果加载成功，退出循环
+            else:
+                retries += 1
+                print(f"Page redirected to: {current_url}. Retrying... {retries}/{max_retries}")
+                if retries >= max_retries:
+                    print("Failed to load the correct login page after multiple attempts.")
+                    self.driver.quit()
+                    sys.exit(1)  # 如果重试超过最大次数，退出程序
+                sleep(1)  # 稍等一下再重试
     def login(self):
         print("Logging in to Twitter...")
         try:
             self.driver.maximize_window()
-            self.driver.get(TWITTER_LOGIN_URL)
-            WebDriverWait(self.driver, 15).until(
-                lambda driver: driver.execute_script("return document.readyState") == "complete"
-            )
-            sleep(3)
+            self.skip_login()
+
             self._input_username()
             self._input_unusual_activity()
+            sleep(3)
             self._input_password()
-
             cookies = self.driver.get_cookies()
             with open(self.cookie_file, 'wb') as filehandler:
                 pickle.dump(cookies, filehandler)
@@ -218,7 +239,6 @@ class Twitter_Scraper:
             if auth_token is None:
                 raise ValueError(
                     """This may be due to the following:
-
 - Internet connection is unstable
 - Username is incorrect
 - Password is incorrect
@@ -229,7 +249,6 @@ class Twitter_Scraper:
             print(json.dumps(Result.fail_with_msg(f"Login Failed: {e}").to_dict()))
             if self.driver:
                 self.driver.quit()
-            sys.exit(1)
         pass
 
     def _input_username(self):
@@ -237,26 +256,23 @@ class Twitter_Scraper:
 
         while True:
             try:
-                username = self.driver.find_element(
-                    "xpath", "//input[@autocomplete='username']"
+                username = WebDriverWait(self.driver, 15).until(
+                    EC.presence_of_element_located((By.XPATH, "//input[@autocomplete='username']"))
                 )
+                # username = self.driver.find_element(
+                #     "xpath", "//input[@autocomplete='username']"
+                # )
                 username.send_keys(self.username)
+                sleep(1)
                 username.send_keys(Keys.RETURN)
-                sleep(3)
                 break
-            except NoSuchElementException:
+            except Exception as e:
                 input_attempt += 1
-                if input_attempt >= 3:
-                    print(
-                        """There was an error inputting the username.
-
-It may be due to the following:
-- Internet connection is unstable
-- Username is incorrect
-- Twitter is experiencing unusual activity"""
-                    )
-                    self.driver.quit()
+                if input_attempt >= 2:
+                    print(f"_input_username failed:{e}")
                     print(json.dumps(Result.fail_with_msg(f"input username failed").to_dict()))
+                    if self.driver:
+                        self.driver.quit()
                     sys.exit(1)
                 else:
                     print("Re-attempting to input username...")
@@ -267,52 +283,55 @@ It may be due to the following:
 
         while True:
             try:
-                unusual_activity = self.driver.find_element(
-                    "xpath", "//input[@data-testid='ocfEnterTextTextInput']"
+                unusual_activity = WebDriverWait(self.driver, 4).until(
+                    EC.presence_of_element_located((By.XPATH, "//input[@data-testid='ocfEnterTextTextInput']"))
                 )
+                # unusual_activity = self.driver.find_element(
+                #     "xpath", "//input[@data-testid='ocfEnterTextTextInput']"
+                # )
                 sleep(0.5)
                 unusual_activity.send_keys(self.username)
                 unusual_activity.send_keys(Keys.RETURN)
-                sleep(3)
                 break
-            except NoSuchElementException:
+            except Exception as e:
                 input_attempt += 1
-                if input_attempt >= 3:
+                if input_attempt >= 2:
                     break
+
 
     def _input_password(self):
         input_attempt = 0
 
         while True:
             try:
-                password = self.driver.find_element(
-                    "xpath", "//input[@autocomplete='current-password']"
+                password = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "//input[@autocomplete='current-password']"))
                 )
-                sleep(0.5)
+                # password = self.driver.find_element(
+                #     "xpath", "//input[@autocomplete='current-password']"
+                # )
                 password.send_keys(self.password)
+                sleep(1)
                 password.send_keys(Keys.RETURN)
-                sleep(3)
-                break
-            except NoSuchElementException:
+                sleep(2)
+                WebDriverWait(self.driver, 15).until(
+                    lambda driver: driver.execute_script("return document.readyState") == "complete"
+                )
+                return
+            except Exception as e:
                 input_attempt += 1
-                if input_attempt >= 3:
-
-                    print(
-                        """There was an error inputting the password.
-It may be due to the following:
-- Internet connection is unstable
-- Password is incorrect
-- Twitter is experiencing unusual activity"""
-                    )
+                if input_attempt >= 2:
+                    print(f"_input_password failed:{e}")
                     print(json.dumps(Result.fail_with_msg(f"input password failed").to_dict()))
-                    self.driver.quit()
+                    if self.driver:
+                        self.driver.quit()
                     sys.exit(1)
                 else:
                     print("Re-attempting to input password...")
                     sleep(2)
 
     def go_to_home(self):
-        self.driver.get("https://twitter.com/home")
+        self.driver.get("https://x.com/home")
         sleep(3)
         pass
 
@@ -324,7 +343,7 @@ It may be due to the following:
             print("Username is not set.")
             sys.exit(1)
         else:
-            self.driver.get(f"https://twitter.com/{self.scraper_details['username']}")
+            self.driver.get(f"https://x.com/{self.scraper_details['username']}")
             sleep(3)
         pass
 
@@ -336,7 +355,7 @@ It may be due to the following:
             print("Hashtag is not set.")
             sys.exit(1)
         else:
-            url = f"https://twitter.com/hashtag/{self.scraper_details['hashtag']}?src=hashtag_click"
+            url = f"https://x.com/hashtag/{self.scraper_details['hashtag']}?src=hashtag_click"
             if self.scraper_details["tab"] == "Latest":
                 url += "&f=live"
 
@@ -349,7 +368,7 @@ It may be due to the following:
             print("Query is not set.")
             sys.exit(1)
         else:
-            url = f"https://twitter.com/search?q={self.scraper_details['query']}&src=typed_query"
+            url = f"https://x.com/search?q={self.scraper_details['query']}&src=typed_query"
             if self.scraper_details["tab"] == "Latest":
                 url += "&f=live"
 
@@ -399,13 +418,13 @@ It may be due to the following:
             scrape_poster_details,
         )
 
-        self.driver.get("https://twitter.com/home")
+        self.driver.get("https://x.com/home")
         WebDriverWait(self.driver, 10).until(
             lambda driver: driver.execute_script("return document.readyState") == "complete"
         )
         if not self.load_cookies():
             self.login()
-        self.driver.get("https://twitter.com/home")
+        self.driver.get("https://x.com/home")
         if router is None:
             router = self.router
 
