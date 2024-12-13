@@ -120,6 +120,14 @@ def main():
         )
 
         parser.add_argument(
+            "-f",
+            "--firefox",
+            type=str,
+            default=None,
+            help="Twitter query or search. Scrape tweets from a query or search.",
+        )
+
+        parser.add_argument(
             "-p",
             "--proxy",
             type=str,
@@ -155,6 +163,7 @@ def main():
         USER_PASSWORD = args.password
         DRIVER_PATH = args.driver
         PROXY = args.proxy
+        FIREFOX_PATH = args.firefox
         FILE_PATH = args.filePath or os.getenv("FILE_PATH")
         LOGINT = args.login
         if not FILE_PATH and not LOGINT:
@@ -198,7 +207,8 @@ def main():
             file_path=os.path.normpath(FILE_PATH) if FILE_PATH is not None else '',
             cookies_path=os.path.normpath(COOKIES_PATH) if FILE_PATH is not None else None,
             proxy=PROXY,
-            driver_path=DRIVER_PATH
+            driver_path=DRIVER_PATH,
+            firefox_path=FIREFOX_PATH
         )
 
         if USER_UNAME is not None and USER_PASSWORD is not None and LOGINT:

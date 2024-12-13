@@ -4,7 +4,6 @@ import pickle
 import sys
 
 import pandas as pd
-from numpy.f2py.auxfuncs import throw_error
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 
@@ -25,8 +24,6 @@ from selenium.common.exceptions import (
     WebDriverException,
 )
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.chrome.service import Service as ChromeService
 
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.firefox.service import Service as FirefoxService
@@ -55,6 +52,7 @@ class Twitter_Scraper:
             scrape_top=False,
             proxy=None,
             driver_path=None,
+            firefox_path=None,
     ):
         print("Initializing Twitter Scraper...")
         self.mail = mail
@@ -62,6 +60,7 @@ class Twitter_Scraper:
         self.password = password
         self.file_path = file_path
         self.driver_path = driver_path
+        self.firefox_path = firefox_path
         self.cookie_file = cookies_path if cookies_path is not None else "cookies.json"
         self.interrupted = False
         self.tweet_ids = set()
@@ -140,28 +139,30 @@ class Twitter_Scraper:
         print("Setup WebDriver...")
         header = Headers().generate()["User-Agent"]
 
-        # browser_option = ChromeOptions()
         browser_option = FirefoxOptions()
-        browser_option.add_argument("--no-sandbox")
-        browser_option.add_argument("--disable-dev-shm-usage")
-        browser_option.add_argument("--ignore-certificate-errors")
+        # browser_option.add_argument("--no-sandbox")
+        # browser_option.add_argument("--disable-dev-shm-usage")
+        # browser_option.add_argument("--ignore-certificate-errors")
         browser_option.add_argument("--disable-gpu")
-        browser_option.add_argument("--log-level=3")
-        browser_option.add_argument("--disable-notifications")
-        browser_option.add_argument("--disable-popup-blocking")
+        browser_option.add_argument("--log-level=5")
+        # browser_option.set_preference("webdriver.log.file", "geckodriver.log")
+        browser_option.set_preference("webdriver.log.level", "ALL")
+        browser_option.set_preference("security.sandbox.content.level", "5")
+        # browser_option.add_argument("--disable-notifications")
+        # browser_option.add_argument("--disable-popup-blocking")
         browser_option.add_argument("--user-agent={}".format(header))
+        if self.firefox_path is not None:
+            browser_option.binary_location = self.firefox_path
+
         if proxy is not None:
             browser_option.add_argument("--proxy-server=%s" % proxy)
         # For Hiding Browser
         #browser_option.add_argument("--headless")
 
         try:
-            # print("Initializing ChromeDriver...")
-            # driver = webdriver.Chrome(
-            #     options=browser_option,
-            # )
-
+            firefox_service = FirefoxService(executable_path=self.driver_path)
             driver = webdriver.Firefox(
+                service=firefox_service,
                 options=browser_option,
             )
             print("WebDriver Setup Complete")
@@ -238,7 +239,7 @@ class Twitter_Scraper:
         try:
             self.driver.maximize_window()
             self.skip_login()
-
+            sleep(5)
             self._input_username()
             dialog=self.handle_popup_and_login()
 
