@@ -10,7 +10,7 @@ hiddenimports = [
 ]
 
 a = Analysis(
-    ['scraper\\__main__.py'],
+    ['scraper/__main__.py'],
     pathex=['.'],
     binaries=[],
     datas=[],
