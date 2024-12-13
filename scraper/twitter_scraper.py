@@ -282,7 +282,11 @@ class Twitter_Scraper:
                 # username = self.driver.find_element(
                 #     "xpath", "//input[@autocomplete='username']"
                 # )
-                username.send_keys(self.username)
+                actions = ActionChains(self.driver)
+                # 模拟用户点击输入框并输入文本
+                actions.move_to_element(username).click().send_keys(self.username).perform()
+                # username.clear()  # 清空输入框
+                # username.send_keys(self.username)
                 print("input username finished")
                 sleep(1)
                 next_button = self.driver.find_element(By.XPATH, "//button[.//span[contains(text(), 'Next')]]")
@@ -334,9 +338,17 @@ class Twitter_Scraper:
                 # password = self.driver.find_element(
                 #     "xpath", "//input[@autocomplete='current-password']"
                 # )
-                password.send_keys(self.password)
+                # password.send_keys(self.password)
+                actions = ActionChains(self.driver)
+                # 模拟用户点击输入框并输入文本
+                actions.move_to_element(password).click().send_keys(self.password).perform()
+                print("input password finished...")
                 sleep(1)
-                password.send_keys(Keys.RETURN)
+                login_button = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//span[text()='Log in']"))
+                )
+                login_button.click()
+                # password.send_keys(Keys.RETURN)
                 sleep(2)
                 WebDriverWait(self.driver, 15).until(
                     lambda driver: driver.execute_script("return document.readyState") == "complete"
