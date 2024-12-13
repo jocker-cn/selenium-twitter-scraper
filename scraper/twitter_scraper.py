@@ -54,12 +54,14 @@ class Twitter_Scraper:
             scrape_latest=True,
             scrape_top=False,
             proxy=None,
+            driver_path=None,
     ):
         print("Initializing Twitter Scraper...")
         self.mail = mail
         self.username = username
         self.password = password
         self.file_path = file_path
+        self.driver_path = driver_path
         self.cookie_file = cookies_path if cookies_path is not None else "cookies.json"
         self.interrupted = False
         self.tweet_ids = set()
@@ -159,7 +161,6 @@ class Twitter_Scraper:
             #     options=browser_option,
             # )
 
-            print("Initializing FirefoxDriver...")
             driver = webdriver.Firefox(
                 options=browser_option,
             )
@@ -170,10 +171,12 @@ class Twitter_Scraper:
                 # print("Downloading ChromeDriver...")
                 # chromedriver_path = ChromeDriverManager().install()
                 # chrome_service = ChromeService(executable_path=chromedriver_path)
-
-                print("Downloading FirefoxDriver...")
-                firefoxdriver_path = GeckoDriverManager().install()
-                firefox_service = FirefoxService(executable_path=firefoxdriver_path)
+                if self.driver_path is not None:
+                    print(f"Use Local GeckoDriverManager:{self.driver_path}")
+                else:
+                    print("Initializing GeckoDriverManager...")
+                    self.driver_path = GeckoDriverManager().install()
+                firefox_service = FirefoxService(executable_path=self.driver_path)
 
                 # print("Initializing ChromeDriver...")
                 # driver = webdriver.Chrome(
