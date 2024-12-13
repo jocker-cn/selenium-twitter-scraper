@@ -151,7 +151,7 @@ class Twitter_Scraper:
         if proxy is not None:
             browser_option.add_argument("--proxy-server=%s" % proxy)
         # For Hiding Browser
-        browser_option.add_argument("--headless")
+        #browser_option.add_argument("--headless")
 
         try:
             # print("Initializing ChromeDriver...")
