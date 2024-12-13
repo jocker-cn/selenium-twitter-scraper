@@ -216,6 +216,20 @@ class Twitter_Scraper:
                     self.driver.quit()
                     sys.exit(1)  # 如果重试超过最大次数，退出程序
                 sleep(1)  # 稍等一下再重试
+
+    def handle_popup_and_login(self):
+        try:
+            # 等待最多10秒钟，直到弹窗中的 'OK' 按钮变为可点击
+            ok_button = WebDriverWait(self.driver, 3).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[@data-testid='confirmationSheetConfirm']//span[contains(text(), 'OK')]"))
+            )
+            ok_button.click()
+            # 如果弹窗出现，刷新页面
+            print("Oops Dialog. refresh page...")
+            return False
+        except Exception:
+            print("No Dialog...")
+            return True
     def login(self):
         print("Logging in to Twitter...")
         try:
@@ -223,6 +237,12 @@ class Twitter_Scraper:
             self.skip_login()
 
             self._input_username()
+            dialog=self.handle_popup_and_login()
+
+            if not dialog:
+                self.skip_login()
+                self._input_username()
+
             self._input_unusual_activity()
             sleep(3)
             self._input_password()
@@ -263,8 +283,12 @@ class Twitter_Scraper:
                 #     "xpath", "//input[@autocomplete='username']"
                 # )
                 username.send_keys(self.username)
+                print("input username finished")
                 sleep(1)
-                username.send_keys(Keys.RETURN)
+                next_button = self.driver.find_element(By.XPATH, "//button[.//span[contains(text(), 'Next')]]")
+                next_button.click()
+
+                # username.send_keys(Keys.RETURN)
                 break
             except Exception as e:
                 input_attempt += 1
