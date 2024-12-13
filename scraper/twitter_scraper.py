@@ -140,16 +140,16 @@ class Twitter_Scraper:
         header = Headers().generate()["User-Agent"]
 
         browser_option = FirefoxOptions()
-        # browser_option.add_argument("--no-sandbox")
-        # browser_option.add_argument("--disable-dev-shm-usage")
-        # browser_option.add_argument("--ignore-certificate-errors")
+        browser_option.add_argument("--no-sandbox")
+        browser_option.add_argument("--disable-dev-shm-usage")
+        browser_option.add_argument("--ignore-certificate-errors")
         browser_option.add_argument("--disable-gpu")
         browser_option.add_argument("--log-level=5")
-        # browser_option.set_preference("webdriver.log.file", "geckodriver.log")
+        browser_option.set_preference("webdriver.log.file", "geckodriver.log")
         browser_option.set_preference("webdriver.log.level", "ALL")
         browser_option.set_preference("security.sandbox.content.level", "5")
-        # browser_option.add_argument("--disable-notifications")
-        # browser_option.add_argument("--disable-popup-blocking")
+        browser_option.add_argument("--disable-notifications")
+        browser_option.add_argument("--disable-popup-blocking")
         browser_option.add_argument("--user-agent={}".format(header))
         if self.firefox_path is not None:
             browser_option.binary_location = self.firefox_path
@@ -360,7 +360,7 @@ class Twitter_Scraper:
                 return
             except Exception as e:
                 input_attempt += 1
-                if input_attempt >= 2:
+                if input_attempt >= 3:
                     print(f"_input_password failed:{e}")
                     print(json.dumps(Result.fail_with_msg(f"input password failed").to_dict()))
                     if self.driver:
