@@ -480,8 +480,10 @@ class Twitter_Scraper:
         WebDriverWait(self.driver, 10).until(
             lambda driver: driver.execute_script("return document.readyState") == "complete"
         )
+        sleep(2)
         if not self.load_cookies():
             self.login()
+        sleep(2)
         self.driver.get("https://x.com/home")
         if router is None:
             router = self.router
