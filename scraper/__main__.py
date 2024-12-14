@@ -42,6 +42,13 @@ def main():
             )
 
             parser.add_argument(
+                "--phone",
+                type=str,
+                default=os.getenv("TWITTER_PHONE"),
+                help="Your Twitter username.",
+            )
+
+            parser.add_argument(
                 "--filePath",
                 type=str,
                 default=None,
@@ -159,6 +166,7 @@ def main():
 
         USER_MAIL = args.mail
         USER_UNAME = args.user
+        USER_PHONE = args.phone
         COOKIES_PATH = args.cookiesPath
         USER_PASSWORD = args.password
         DRIVER_PATH = args.driver
@@ -204,6 +212,7 @@ def main():
             mail=USER_MAIL,
             username=USER_UNAME,
             password=USER_PASSWORD,
+            user_phone=USER_PHONE,
             file_path=os.path.normpath(FILE_PATH) if FILE_PATH is not None else '',
             cookies_path=os.path.normpath(COOKIES_PATH) if FILE_PATH is not None else None,
             proxy=PROXY,

@@ -41,6 +41,7 @@ class Twitter_Scraper:
             mail,
             username,
             password,
+            user_phone,
             file_path,
             cookies_path,
             max_tweets=50,
@@ -58,6 +59,7 @@ class Twitter_Scraper:
         self.mail = mail
         self.username = username
         self.password = password
+        self.user_phone = user_phone
         self.file_path = file_path
         self.driver_path = driver_path
         self.firefox_path = firefox_path
@@ -157,7 +159,7 @@ class Twitter_Scraper:
         if proxy is not None:
             browser_option.add_argument("--proxy-server=%s" % proxy)
         # For Hiding Browser
-        browser_option.add_argument("--headless")
+        #browser_option.add_argument("--headless")
 
         try:
             firefox_service = FirefoxService(executable_path=self.driver_path)
@@ -246,7 +248,7 @@ class Twitter_Scraper:
             if not dialog:
                 self.skip_login()
                 self._input_username()
-
+            self._input_phone()
             self._input_unusual_activity()
             sleep(3)
             self._input_password()
@@ -274,6 +276,22 @@ class Twitter_Scraper:
             if self.driver:
                 self.driver.quit()
         pass
+    def _input_phone(self):
+        while True:
+            try:
+                phone = WebDriverWait(self.driver, 15).until(
+                    EC.presence_of_element_located((By.XPATH, "//input[@autocomplete='on']"))
+                )
+                actions = ActionChains(self.driver)
+                actions.move_to_element(phone).click().send_keys(self.user_phone).perform()
+                print("input phone finished")
+                sleep(1)
+                next_button = self.driver.find_element(By.XPATH, "//button[.//span[contains(text(), 'Next')]]")
+                next_button.click()
+                break
+            except Exception as e:
+                print(f"no phone input: {e}")
+                return
 
     def _input_username(self):
         input_attempt = 0
