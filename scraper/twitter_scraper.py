@@ -489,7 +489,7 @@ class Twitter_Scraper:
             router = self.router
 
         router()
-
+        sleep(3.5)
         if self.scraper_details["type"] == "Username":
             print(
                 "Scraping Tweets from @{}...".format(self.scraper_details["username"])
