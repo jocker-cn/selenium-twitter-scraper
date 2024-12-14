@@ -431,7 +431,9 @@ class Twitter_Scraper:
                 url += "&f=live"
 
             self.driver.get(url)
-            sleep(3)
+            WebDriverWait(self.driver, 10).until(
+                lambda driver: driver.execute_script("return document.readyState") == "complete"
+            )
         pass
 
     def get_tweet_cards(self):
@@ -487,9 +489,10 @@ class Twitter_Scraper:
         self.driver.get("https://x.com/home")
         if router is None:
             router = self.router
-
         router()
-        sleep(3.5)
+        sleep(3)
+        current_url = self.driver.current_url
+        print("current url:", current_url)
         if self.scraper_details["type"] == "Username":
             print(
                 "Scraping Tweets from @{}...".format(self.scraper_details["username"])
@@ -765,6 +768,7 @@ class Twitter_Scraper:
                 cookies = pickle.load(filehandler)
                 for cookie in cookies:
                     self.driver.add_cookie(cookie)
+            print("loading cookies finished")
             return True
         except FileNotFoundError:
             return False
